@@ -9,27 +9,6 @@ output:
 
 
 
-
-
-```{r}
-
-install.packages(c("arrow", "gifski", "ncmeta", "RNetCDF"))
-
-```
-
-
-
-```{r}
-install.packages(c("remotes", "httr", "devtools"))
-```
-
-
-```{r}
-remotes::install_github("mikejohnson51/climateR")
-```
-
-
-
 ```{r setup, include=FALSE}
 
 # Load libraries
@@ -40,29 +19,30 @@ library(rgeoboundaries)
 library(climateR)
 library(biscale)
 
+library(cowplot)
 ```
 
 
 
 
 ```{r }
-# Load United Kingdom boundary data at the country level (administrative level 0)
-uk0 <- geoboundaries(country = c("Rwanda"))
+# Load boundary data at the country level (administrative level 0)
+djb0 <- geoboundaries(country = c("Djibouti"))
 
-# Load United Kingdom boundary data at the first administrative level (e.g., regions)
-uk1 <- geoboundaries(country = c("Rwanda"), adm_lvl = "adm1")
+# Load boundary data at the first administrative level (e.g., regions)
+djb1 <- geoboundaries(country = c("Djibouti"), adm_lvl = "adm1")
 
 # Plot the geometry of administrative level 1 boundaries with a gray border
-plot(st_geometry(uk1), border = "gray")
+plot(st_geometry(djb1), border = "gray")
 
 # Add the country boundary (administrative level 0) to the existing plot in bold
-plot(st_geometry(uk0), add = TRUE, size = 2)
+plot(st_geometry(djb0), add = TRUE, size = 2)
 ```
 
 ```{r}
 
-# Retrieve TerraClimate data for the United Kingdom with specified variables (max and min temperature)
-temp_terra = getTerraClim(AOI = uk0, 
+# Retrieve TerraClimate data for the Djibouti with specified variables (max and min temperature)
+temp_terra = getTerraClim(AOI = djb0, 
                           varname = c("tmax", "tmin"),
                           startDate = "2003-01-01",
                           endDate  = "2023-12-01")
@@ -95,11 +75,11 @@ new_res <- 0.025  # Set the new resolution
 new_raster <- rast(ext(annual_mean_temp), resolution = new_res, crs = crs(annual_mean_temp))
 annual_mean_temp <- resample(x = annual_mean_temp, y = new_raster, method="bilinear")
 
-# Crop the resampled temperature data to match the boundaries of the United Kingdom
-uk_temp <- terra::crop(annual_mean_temp, y = uk0, mask = TRUE)
+# Crop the resampled temperature data to match the boundaries of the Djibouti
+djb_temp <- terra::crop(annual_mean_temp, y = djb0, mask = TRUE)
 
 # Plot the cropped annual mean temperature for the United Kingdom
-plot(uk_temp)
+plot(djb_temp)
 
 ```
 
@@ -107,8 +87,8 @@ plot(uk_temp)
 
 ```{r}
 
-# Retrieve TerraClimate data for precipitation in the United Kingdom
-ppt_terra = getTerraClim(AOI = uk0, 
+# Retrieve TerraClimate data for precipitation in the Djibouti
+ppt_terra = getTerraClim(AOI = djb0, 
                          varname = "ppt",
                          startDate = "2003-01-01",
                          endDate  = "2023-12-01")
@@ -120,11 +100,11 @@ annual_mean_ppt <- mean(ppt_terra$ppt, na.rm = TRUE)
 new_raster <- rast(ext(annual_mean_ppt), resolution = new_res, crs = crs(annual_mean_ppt))
 annual_mean_ppt <- resample(x = annual_mean_ppt, y = new_raster, method = "bilinear")
 
-# Crop the resampled precipitation data to match the boundaries of the United Kingdom
-uk_ppt <- terra::crop(annual_mean_ppt, y = uk0, mask = TRUE)
+# Crop the resampled precipitation data to match the boundaries of the Djibouti
+djb_ppt <- terra::crop(annual_mean_ppt, y = djb0, mask = TRUE)
 
-# Plot the cropped annual mean precipitation for the United Kingdom
-plot(uk_ppt)
+# Plot the cropped annual mean precipitation for the Djibouti
+plot(djb_ppt)
 
 ```
 
@@ -133,7 +113,7 @@ plot(uk_ppt)
 
 ```{r}
 # Combine temperature and precipitation rasters into a single raster stack
-temp_ppt <- c(uk_temp, uk_ppt)
+temp_ppt <- c(djb_temp, djb_ppt)
 
 # Assign descriptive names to each raster layer in the stack
 names(temp_ppt) <- c("temp", "ppt")
@@ -141,10 +121,10 @@ names(temp_ppt) <- c("temp", "ppt")
 ```
 
 ```{r}
-# Project the combined temperature and precipitation raster stack to match the projection of the UK boundary
+# Project the combined temperature and precipitation raster stack to match the projection of the djibouti boundary
 # Then convert the raster data to a data frame, retaining the x and y coordinates for mapping
 temp_ppt_df <- temp_ppt |> 
-  project(uk0) |> 
+  project(djb0) |> 
   as.data.frame(xy = TRUE)
 
 # Display the first few rows of the resulting data frame to verify the data
@@ -177,16 +157,16 @@ data |>
 palette <- "BlueOr"
 
 # Create the bivariate map using ggplot2
-create_bivariate_map <- function(data, uk1, uk0) {
+create_bivariate_map <- function(data, djb1, djb0) {
   ggplot() +
     theme_void(base_size = 14) +  # Changed to theme_void to remove all non-data elements
     coord_sf(xlim = c(33.9, 41.9), ylim = c(-4.7, 5.5), expand = FALSE) +
     geom_raster(data = data, aes(x = x, y = y, fill = bi_class), color = NA, show.legend = FALSE) +
     bi_scale_fill(pal = palette, dim = 4, flip_axes = FALSE, rotate_pal = FALSE) +
-    geom_sf(data = uk1, fill = NA, color = "black", linewidth = 0.2, alpha = 0.7) +
-    geom_sf(data = uk0, fill = NA, color = "black", linewidth = 0.4) +
+    geom_sf(data = djb1, fill = NA, color = "black", linewidth = 0.2, alpha = 0.7) +
+    geom_sf(data = djb0, fill = NA, color = "black", linewidth = 0.4) +
     labs(
-      title = "Rwanda: Temperature and Precipitation Patterns",
+      title = "Djibouti: Temperature and Precipitation Patterns",
       subtitle = "Mean temperature and precipitation based on 20 years of data (2003-2023)",
       caption = "Source: Terra Climate Data | Author: Hillary Koros inspired by Mohsin Ramay"
     ) +
@@ -230,20 +210,13 @@ create_final_plot <- function(map, legend) {
 }
 
 # Main execution
-map <- create_bivariate_map(data, uk1, uk0)
+map <- create_bivariate_map(data, djb1, djb0)
 legend <- create_legend()
 final_plot <- create_final_plot(map, legend)
 
-# Display the final map with legend
+# Display the final map with the legend
 print(final_plot)
 
 ```
 
-
-```{r}
-```
-
-
-```{r}
-```
 
